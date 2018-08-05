@@ -4,7 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 
 public class Server{
-
+    
     public static void Main(){
         Console.WriteLine("Server Start");
         try {
