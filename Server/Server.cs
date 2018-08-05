@@ -5,39 +5,76 @@ using System.Net.Sockets;
 
 public class Server{
     
-    public static void Main(){
+    private TcpListener myListener;
+    private Socket sock;
+
+    public Server(String ip, int port){
         Console.WriteLine("Server Start");
+        IPAddress ipAd = IPAddress.Parse("127.0.0.1");
         try {
-            IPAddress ipAd = IPAddress.Parse("192.168.7.91");
         
-            TcpListener myList = new TcpListener(ipAd,8001);
+            myListener = new TcpListener(ipAd,8001);
             
-            myList.Start();
+            myListener.Start();
 
             Console.WriteLine("The server is running at port 8001...");    
-            Console.WriteLine("The local End point is  :" + myList.LocalEndpoint );
+            Console.WriteLine("The local End point is  :" + myListener.LocalEndpoint );
             Console.WriteLine("Waiting for a connection.....");
-
-                
-            Socket s=myList.AcceptSocket();
-            Console.WriteLine("Connection accepted from " + s.RemoteEndPoint);
-            
-            byte[] b=new byte[100];
-            int k=s.Receive(b);
-            Console.WriteLine("Recieved...");
-            for (int i=0;i<k;i++)
-                Console.Write(Convert.ToChar(b[i]));
-
-            ASCIIEncoding asen=new ASCIIEncoding();
-            s.Send(asen.GetBytes("The string was recieved by the server."));
-            Console.WriteLine("\nSent Acknowledgement");
-
-            s.Close();
-            myList.Stop();
-                
-        }
-        catch (Exception e) {
+            sock=myListener.AcceptSocket();
+            Console.WriteLine("Connection accepted from " + sock.RemoteEndPoint);
+        }catch(Exception e) {
             Console.WriteLine("Server Error..... " + e.StackTrace);
-        } 
+        }
+    }
+
+    public String Read(){
+        try {
+            byte[] b = new byte[100];
+            int k=sock.Receive(b);
+            Console.WriteLine("Recieved...");
+            String recievedStr = "";
+            for (int i=0;i<k;i++)
+                recievedStr = recievedStr + Convert.ToChar(b[i]);
+            Console.Write(recievedStr);
+            return recievedStr;
+        }catch(Exception e){
+            Console.WriteLine("Read Error..... " + e.StackTrace);
+            return "READERROR";
+        }
+    }
+
+    public String Write(String s){
+        try{
+            ASCIIEncoding asen=new ASCIIEncoding();
+            sock.Send(asen.GetBytes(s));
+            Console.WriteLine("\nSent Acknowledgement");
+            return s;
+        }catch(Exception e){
+            Console.WriteLine("Read Error..... " + e.StackTrace);
+            return "WRITEERROR";
+        }
+    }
+
+    public void Close(){
+        sock.Close();
+        myListener.Stop();
+    }
+
+    public void Start(){
+        bool reading = true;
+        while(reading){
+            String a = Read();
+            if (a.Equals("STOP") || a.Equals("READERROR")){
+                reading = false;
+            }else{
+                Write("The string was recieved by the server.");
+            }
+        }
+        Close();
+    }
+
+    public static void Main(){
+        Server s = new Server("127.0.0.1",8001);
+        s.Start();
     }
 }
