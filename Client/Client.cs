@@ -26,6 +26,13 @@ public class Client {
             Console.Write("Enter the string to be transmitted : ");
             
             String str = Console.ReadLine();
+            //adds 4 byte header to string
+            String header = ""+str.Length;
+            while(header.Length<4){
+                header = "0"+header;
+            }
+            str = header+str;
+
             Stream stm = tcpclient.GetStream();
                         
             ASCIIEncoding asen= new ASCIIEncoding();
@@ -39,7 +46,7 @@ public class Client {
             return "WRITEERROR";
         }
     }
-
+/*
     public String Write(String s){
         try{
             Stream stm = tcpclient.GetStream();
@@ -55,16 +62,18 @@ public class Client {
             return "WRITEERROR";
         }
     }
-
+*/
     public int Read(){
         try{
-            Stream stm = tcpclient.GetStream();
-            byte[] bb=new byte[200];
-            int k=stm.Read(bb,0,100);
-                
-            for (int i=0;i<k;i++)
-                Console.Write(Convert.ToChar(bb[i]));
-            Console.Write("\n");
+            NetworkStream stm = tcpclient.GetStream();
+            while(stm.DataAvailable){
+                byte[] bb=new byte[100];
+                int k=stm.Read(bb,0,100);
+                String read = "";
+                for (int i=0;i<k;i++)
+                    read = read + Convert.ToChar(bb[i]);
+                Console.WriteLine(read);              
+            }
             return 0;
         }catch(Exception e) {
             Console.WriteLine("Read Error..... " + e.StackTrace);
@@ -78,9 +87,8 @@ public class Client {
             String a = Write();
             if (a.Equals("STOP") || a.Equals("WRITEERROR")){
                 reading = false;
-            }else{
-                Read();
             }
+            Read();
         }
         Close();
     }
