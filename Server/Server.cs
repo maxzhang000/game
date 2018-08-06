@@ -9,12 +9,14 @@ public class Server{
     private TcpListener myListener;
     private Socket[] sockets;
     private Thread[] threads;//NEED TO REMOVE FINISHED THREADS FROM ARRAY
+    private MessageBoard messages;
 
     public Server(String ip, int port){
         Console.WriteLine("Server Start");
         IPAddress ipAd = IPAddress.Parse("127.0.0.1");
         sockets = new Socket[0];
         threads = new Thread[0];
+        messages = new MessageBoard();
         try{
             myListener = new TcpListener(ipAd,8001);
             
@@ -96,7 +98,6 @@ public class Server{
         }
     }
 
-
     public void Close(Socket sock){
         //Array.remove(sockets,sock);
         sock.Close();
@@ -109,8 +110,10 @@ public class Server{
             if (a.Equals("STOP") || a.Equals("READERROR")){
                 reading = false;
             }else{
-                Write(sock,"The "+a.Length+" bytes were recieved by the server");
+                messages.update(a);
+                Write(sock,messages.output());
             }
+            Console.WriteLine("Current Messages on Board:" + messages.output());
         }
         Close(sock);
     }
