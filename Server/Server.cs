@@ -7,9 +7,12 @@ using System.Threading;
 public class Server{
     
     private TcpListener myListener;
+    //NEED TO REMOVE FINISHED SOCKETS FROM ARRAY
     private Socket[] sockets;
-    private Thread[] threads;//NEED TO REMOVE FINISHED THREADS FROM ARRAY
+    //NEED TO REMOVE FINISHED THREADS FROM ARRAY
+    private Thread[] threads;
     private MessageBoard messages;
+    private bool update;
 
     public Server(String ip, int port){
         Console.WriteLine("Server Start");
@@ -17,6 +20,7 @@ public class Server{
         sockets = new Socket[0];
         threads = new Thread[0];
         messages = new MessageBoard();
+        update = false;
         try{
             myListener = new TcpListener(ipAd,8001);
             
@@ -78,32 +82,74 @@ public class Server{
                 blocks++;
             }while(blocks*b.Length < readSize);
             Console.WriteLine("Complete message: "+fullReadInString);
+            update = true;
             return fullReadInString;
         }catch(Exception e){
-            Console.WriteLine("Read Error..... " + e.StackTrace);
+            Console.WriteLine("Read Error..... Connection Closed" + e.StackTrace);
+            Close(sock);
             return "READERROR";
         }
 
     }
 
-    public String Write(Socket sock, String s){
+    public String Send(Socket sock, String s){
         try{
             ASCIIEncoding asen=new ASCIIEncoding();
+            /*
+            String header = ""+s.Length;
+            while(header.Length<4){
+                header = "0" + header;
+            }
+            s = header + s;
+            */
             sock.Send(asen.GetBytes(s));
-            Console.WriteLine("\nSent Acknowledgement");
+            if (!messages.output().Equals(s)){
+                Console.WriteLine("WHATTHEFUCK");
+            }
+            Console.WriteLine("\nSent Acknowledgement with {0} bytes:"+s,s.Length);
             return s;
         }catch(Exception e){
-            Console.WriteLine("Read Error..... " + e.StackTrace);
-            return "WRITEERROR";
+            Console.WriteLine("Send Error, Connection Closed..... " + e.StackTrace);
+            Close(sock);
+            return "SendERROR";
+        }
+    }
+
+    public void SendAll(){
+        while (true) {
+            Thread.Sleep(2);
+            if (update == true){
+                for(int i = 0; i < sockets.Length; i++){
+                    Send(sockets[i],messages.output());
+                }
+                update = false;
+            }
         }
     }
 
     public void Close(Socket sock){
-        //Array.remove(sockets,sock);
+        RemoveSocket(sock);
         sock.Close();
     }
 
+    private void RemoveSocket(Socket sock){
+        for (int i = 0; i < sockets.Length; i++){
+            if (sockets[i].Equals(sock)){
+                Socket[] temp = new Socket[sockets.Length-1];
+                for (int j = 0; j<i; j++){
+                    temp[j] = sockets[j];
+                }
+                for (int j = i; j < sockets.Length-1; j++){
+                    temp[j] = sockets[j+1];
+                }
+                sockets = temp;
+                break;
+            }
+        }
+    }
+
     public void Start(Socket sock){
+        update = true;
         bool reading = true;
         while(reading){
             String a = Read(sock);
@@ -111,9 +157,9 @@ public class Server{
                 reading = false;
             }else{
                 messages.update(a);
-                Write(sock,messages.output());
+                update = true;
             }
-            Console.WriteLine("Current Messages on Board:" + messages.output());
+            Console.WriteLine("Current Messages on Board:\n" + messages.output());
         }
         Close(sock);
     }
@@ -122,5 +168,7 @@ public class Server{
         Server s = new Server("127.0.0.1",8001);
         Thread listenThread = new Thread(new ThreadStart(s.Listen));
         listenThread.Start();
+        Thread writeThread = new Thread(new ThreadStart(s.SendAll));
+        writeThread.Start();
     }
 }
